@@ -5,7 +5,9 @@ lazy val root = (project in file("."))
   .settings(
     name := "Prog_fonctionnelle",
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-core" % "4.0.1",
-      "org.apache.spark" %% "spark-sql"  % "4.0.1"
+      "org.apache.spark" %% "spark-core"    % "4.0.1",
+      "org.apache.spark" %% "spark-sql"     % "4.0.1",
+      "org.apache.spark" %% "spark-graphx"  % "4.0.1",
+      "org.apache.spark" %% "spark-mllib"   % "4.0.1"
     )
   )
