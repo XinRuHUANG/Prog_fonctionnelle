@@ -8,7 +8,9 @@ import org.apache.spark.sql.functions._
 
 object Prediction {
 
-  def buildFeaturePipeline(categoricalCols: Seq[String], numericCols: Seq[String]): Pipeline = {
+  def prepareFeatures(df: DataFrame): DataFrame = {
+
+    val categoricalCols = Seq("Station", "Ligne de transport", "Meteo", "Jour de la semaine", "Affluence")
 
     val indexers = categoricalCols.map { colName =>
       new StringIndexer()
@@ -23,36 +25,25 @@ object Prediction {
         .setOutputCol(colName + "_vec")
     }
 
+    val df2 = df.withColumn("Heure", split(col("Horaire"), ":")(0).cast("int"))
+
+    val numericCols = Seq("Heure", "Particules fines (µg/m3)", "Bruit (dB)", "Humidite (%)")
+
     val featureCols = categoricalCols.map(_ + "_vec") ++ numericCols
 
     val assembler = new VectorAssembler()
       .setInputCols(featureCols.toArray)
       .setOutputCol("features")
 
-    new Pipeline().setStages((indexers ++ encoders :+ assembler).toArray)
+    val pipeline = new Pipeline().setStages((indexers ++ encoders :+ assembler).toArray)
+
+    pipeline.fit(df2).transform(df2)
   }
 
-  def prepareData(df: DataFrame): DataFrame = {
+  def trainModel(df: DataFrame): Map[String, DataFrame] = {
 
-    val df2 = df.withColumn("Heure", split(col("Horaire"), ":")(0).cast("int"))
-
-    df2
-  }
-
-  def trainModels(df: DataFrame): Map[String, DataFrame] = {
-
-    val categoricalCols = Seq("Station", "Ligne de transport", "Meteo", "Jour de la semaine", "Affluence")
-    val numericCols = Seq("Heure", "Particules fines (µg/m3)", "Bruit (dB)", "Humidite (%)")
-
-    val pipeline = buildFeaturePipeline(categoricalCols, numericCols)
-
-    val prepared = prepareData(df)
-
-    // Fit du pipeline de features
-    val featureModel = pipeline.fit(prepared)
-    val featuredDF = featureModel.transform(prepared)
-
-    // Définition des modèles MLlib
+    val prepared = prepareFeatures(df)
+    
     val models = Seq(
       "LinearRegression" -> new LinearRegression()
         .setLabelCol("CO2 (ppm)")
@@ -70,8 +61,8 @@ object Prediction {
 
     // Entraînement + prédictions
     models.map { case (name, algo) =>
-      val model = algo.fit(featuredDF)
-      val predictions = model.transform(featuredDF)
+      val model = algo.fit(prepared)
+      val predictions = model.transform(prepared)
       name -> predictions
     }.toMap
   }
