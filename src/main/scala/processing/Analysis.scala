@@ -9,11 +9,16 @@ object Analysis {
       .agg(F.avg("CO2 (ppm)").as("CO2_moyen"))
       .orderBy(F.desc("CO2_moyen"))
 
-  def picsHoraires(df: DataFrame): DataFrame =
-    df.withColumn("Heure", F.split(F.col("Horaire"), ":")(0).cast("int"))
-      .groupBy("Heure")
+  def picsHoraires(df: DataFrame): DataFrame = {
+    // Convertir Horaire en timestamp (yyyy-MM-dd HH ou yyyy-MM-dd HH:mm:ss)
+    val df2 = df.withColumn("HoraireTS", F.to_timestamp(F.col("Horaire"), "yyyy-MM-dd HH"))
+      .withColumn("Heure", F.hour(F.col("HoraireTS")))
+
+    // Calcul de la moyenne de CO2 par heure
+    df2.groupBy("Heure")
       .agg(F.avg("CO2 (ppm)").as("CO2_moyen"))
       .orderBy(F.desc("CO2_moyen"))
+  }
 
   def anomalies(df: DataFrame): DataFrame = {
     val withIndex = df.withColumn(

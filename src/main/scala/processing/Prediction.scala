@@ -25,7 +25,11 @@ object Prediction {
         .setOutputCol(colName + "_vec")
     }
 
-    val df2 = df.withColumn("Heure", split(col("Horaire"), ":")(0).cast("int"))
+    // ✅ Transformer Horaire en timestamp puis extraire l'heure
+    val df2 = df.withColumn(
+      "HoraireTS",
+      to_timestamp(col("Horaire"), "yyyy-MM-dd HH")
+    ).withColumn("Heure", hour(col("HoraireTS")))
 
     val numericCols = Seq("Heure", "Particules fines (µg/m3)", "Bruit (dB)", "Humidite (%)")
 
